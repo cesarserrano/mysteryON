@@ -10,11 +10,6 @@
   <main>
     <h1>Jogo de Mistério</h1>
 
-    <div id="auth-section">
-      <button id="login-btn">Login com Magic Link</button>
-      <button id="logout-btn" style="display: none;">Sair</button>
-    </div>
-
     <div id="imagem-container">
       <img id="imagem-misterio" src="https://raw.githubusercontent.com/cesarserrano/mysteryON/refs/heads/main/imagem.jpg" alt="Imagem de Mistério" />
     </div>
@@ -22,7 +17,13 @@
     <div id="dica-container">
       <p id="dica">Carregando dica...</p>
     </div>
-
+    <div id="auth-container">
+  <h2>Login</h2>
+  <input type="email" id="login-email" placeholder="Seu e-mail" />
+  <input type="password" id="login-password" placeholder="Sua senha" />
+  <button id="login-button">Entrar</button>
+  <p id="login-status"></p>
+</div>
     <button id="btn-finalizar">Finalizar Jogo</button>
 
     <h2>Ranking</h2>
@@ -66,11 +67,13 @@
     }
 
     // Função: Enviar pontuação
-    async function enviarPontuacao(nome, pontos, tempo) {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user?.user?.id) {
-        alert("Você precisa estar logado para salvar sua pontuação.");
-        return;
+async function enviarPontuacao(nome, pontos, tempo) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Você precisa estar logado para salvar sua pontuação.");
+    return;
+  }
       }
 
       const { error } = await supabase.from("pontuacoes").insert([
@@ -89,7 +92,7 @@
         alert("Pontuação salva com sucesso!");
         carregarRanking();
       }
-    }
+    
 
     // Função: Finalizar jogo
     async function finalizarJogo() {
@@ -162,6 +165,25 @@
     checkAuth();
     carregarDica();
     carregarRanking();
+    // Faz login com e-mail e senha
+async function loginComEmailSenha() {
+  const email = document.getElementById("login-email").value;
+  const senha = document.getElementById("login-password").value;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: senha,
+  });
+
+  if (error) {
+    console.error("Erro ao logar:", error.message);
+    document.getElementById("login-status").innerText = "Erro ao fazer login.";
+  } else {
+    document.getElementById("login-status").innerText = "Login realizado com sucesso!";
+    console.log("Usuário logado:", data.user);
+  }
+}
+document.getElementById("login-button").addEventListener("click", loginComEmailSenha);
   </script>
 </body>
 </html>
