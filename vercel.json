@@ -1,10 +1,10 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "*.html",
-      "use": "@vercel/static"
-    },
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "*.css", "use": "@vercel/static" },
+    { "src": "*.js", "use": "@vercel/static" }
+    ,
     {
       "src": "supabase.js",
       "use": "@vercel/static"
@@ -14,4 +14,4 @@
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
- 
+
