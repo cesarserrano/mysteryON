@@ -7,8 +7,13 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <main> 
+  <main>
     <h1>Jogo de Mistério</h1>
+
+    <div id="auth-section">
+      <button id="login-btn">Login com Magic Link</button>
+      <button id="logout-btn" style="display: none;">Sair</button>
+    </div>
 
     <div id="imagem-container">
       <img id="imagem-misterio" src="https://raw.githubusercontent.com/cesarserrano/mysteryON/refs/heads/main/imagem.jpg" alt="Imagem de Mistério" />
@@ -18,7 +23,7 @@
       <p id="dica">Carregando dica...</p>
     </div>
 
-    <button onclick="finalizarJogo()">Finalizar Jogo</button>
+    <button id="btn-finalizar">Finalizar Jogo</button>
 
     <h2>Ranking</h2>
     <table id="tabela-ranking">
@@ -38,7 +43,12 @@
   <script type="module">
     import { supabase } from './supabase.js';
 
-    // Carrega dica com base na hora atual
+    // Referência de elementos
+    const btnFinalizar = document.getElementById("btn-finalizar");
+    const loginBtn = document.getElementById("login-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+
+    // Função: Carregar dica
     async function carregarDica() {
       const horaAtual = new Date().getHours();
       const { data, error } = await supabase
@@ -55,43 +65,42 @@
       }
     }
 
-    // Envia pontuação do jogador
+    // Função: Enviar pontuação
     async function enviarPontuacao(nome, pontos, tempo) {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user?.id) {
         alert("Você precisa estar logado para salvar sua pontuação.");
         return;
       }
 
-      const { error } = await supabase.from("pontuacoes").insert([{
-        user_id: user.id,
-        nome,
-        pontos,
-        tempo_em_segundos: tempo,
-      }]);
+      const { error } = await supabase.from("pontuacoes").insert([
+        {
+          user_id: user.user.id,
+          nome: nome,
+          pontos: pontos,
+          tempo_em_segundos: tempo,
+        },
+      ]);
 
       if (error) {
         console.error("Erro ao salvar pontuação:", error.message);
         alert("Erro ao salvar pontuação.");
       } else {
         alert("Pontuação salva com sucesso!");
-        carregarRanking(); // atualiza ranking após envio
+        carregarRanking();
       }
     }
 
-    // Finaliza jogo (simula pontuação)
-    function finalizarJogo() {
+    // Função: Finalizar jogo
+    async function finalizarJogo() {
       const nome = prompt("Digite seu nome:");
       if (!nome) return;
-
-      const pontos = Math.floor(Math.random() * 100); // Exemplo de pontuação
-      const tempo = Math.floor(Math.random() * 500);  // Exemplo de tempo
-
-      enviarPontuacao(nome, pontos, tempo);
+      const pontos = Math.floor(Math.random() * 100);
+      const tempo = Math.floor(Math.random() * 500);
+      await enviarPontuacao(nome, pontos, tempo);
     }
 
-    // Carrega o ranking dos 10 melhores
+    // Função: Carregar ranking
     async function carregarRanking() {
       const { data, error } = await supabase
         .from('pontuacoes')
@@ -119,7 +128,38 @@
       });
     }
 
-    // Inicialização automática
+    // Função: Check login status
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+      } else {
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+      }
+    }
+
+    // Eventos
+    btnFinalizar.addEventListener("click", finalizarJogo);
+
+    loginBtn.addEventListener("click", async () => {
+      const email = prompt("Digite seu e-mail:");
+      if (email) {
+        const { error } = await supabase.auth.signInWithOtp({ email });
+        if (error) alert("Erro ao enviar magic link");
+        else alert("Verifique seu e-mail para o link de acesso.");
+      }
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      alert("Você saiu.");
+      checkAuth();
+    });
+
+    // Inicialização
+    checkAuth();
     carregarDica();
     carregarRanking();
   </script>
