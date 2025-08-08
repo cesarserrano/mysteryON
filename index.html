@@ -17,13 +17,15 @@
     <div id="dica-container">
       <p id="dica">Carregando dica...</p>
     </div>
+
     <div id="auth-container">
-  <h2>Login</h2>
-  <input type="email" id="login-email" placeholder="Seu e-mail" />
-  <input type="password" id="login-password" placeholder="Sua senha" />
-  <button id="login-button">Entrar</button>
-  <p id="login-status"></p>
-</div>
+      <h2>Login</h2>
+      <input type="email" id="login-email" placeholder="Seu e-mail" />
+      <input type="password" id="login-password" placeholder="Sua senha" />
+      <button id="login-button">Entrar</button>
+      <p id="login-status"></p>
+    </div>
+
     <button id="btn-finalizar">Finalizar Jogo</button>
 
     <h2>Ranking</h2>
@@ -44,12 +46,10 @@
   <script type="module">
     import { supabase } from './supabase.js';
 
-    // Referência de elementos
     const btnFinalizar = document.getElementById("btn-finalizar");
-    const loginBtn = document.getElementById("login-btn");
-    const logoutBtn = document.getElementById("logout-btn");
+    const loginButton = document.getElementById("login-button");
 
-    // Função: Carregar dica
+    // Carrega a dica com base na hora atual
     async function carregarDica() {
       const horaAtual = new Date().getHours();
       const { data, error } = await supabase
@@ -59,28 +59,28 @@
         .order('hora', { ascending: false })
         .limit(1);
 
+      const dica = document.getElementById('dica');
       if (error || !data || data.length === 0) {
-        document.getElementById('dica').innerText = 'Nenhuma dica disponível agora.';
+        dica.innerText = 'Nenhuma dica disponível agora.';
       } else {
-        document.getElementById('dica').innerText = data[0].texto;
+        dica.innerText = data[0].texto;
       }
     }
 
-    // Função: Enviar pontuação
-async function enviarPontuacao(nome, pontos, tempo) {
-  const { data: { user } } = await supabase.auth.getUser();
+    // Envia pontuação para Supabase
+    async function enviarPontuacao(nome, pontos, tempo) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  if (!user) {
-    alert("Você precisa estar logado para salvar sua pontuação.");
-    return;
-  }
+      if (authError || !user) {
+        alert("Você precisa estar logado para salvar sua pontuação.");
+        return;
       }
 
       const { error } = await supabase.from("pontuacoes").insert([
         {
-          user_id: user.user.id,
-          nome: nome,
-          pontos: pontos,
+          user_id: user.id,
+          nome,
+          pontos,
           tempo_em_segundos: tempo,
         },
       ]);
@@ -92,10 +92,10 @@ async function enviarPontuacao(nome, pontos, tempo) {
         alert("Pontuação salva com sucesso!");
         carregarRanking();
       }
-    
+    }
 
-    // Função: Finalizar jogo
-    async function finalizarJogo() {
+    // Finaliza o jogo e solicita dados
+    window.finalizarJogo = async function () {
       const nome = prompt("Digite seu nome:");
       if (!nome) return;
       const pontos = Math.floor(Math.random() * 100);
@@ -103,7 +103,7 @@ async function enviarPontuacao(nome, pontos, tempo) {
       await enviarPontuacao(nome, pontos, tempo);
     }
 
-    // Função: Carregar ranking
+    // Carrega ranking da Supabase
     async function carregarRanking() {
       const { data, error } = await supabase
         .from('pontuacoes')
@@ -131,59 +131,32 @@ async function enviarPontuacao(nome, pontos, tempo) {
       });
     }
 
-    // Função: Check login status
-    async function checkAuth() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
+    // Login com e-mail e senha
+    async function loginComEmailSenha() {
+      const email = document.getElementById("login-email").value;
+      const senha = document.getElementById("login-password").value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha,
+      });
+
+      const status = document.getElementById("login-status");
+      if (error) {
+        console.error("Erro ao logar:", error.message);
+        status.innerText = "Erro ao fazer login.";
       } else {
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
+        status.innerText = "Login realizado com sucesso!";
+        console.log("Usuário logado:", data.user);
       }
     }
 
-    // Eventos
+    loginButton.addEventListener("click", loginComEmailSenha);
     btnFinalizar.addEventListener("click", finalizarJogo);
 
-    loginBtn.addEventListener("click", async () => {
-      const email = prompt("Digite seu e-mail:");
-      if (email) {
-        const { error } = await supabase.auth.signInWithOtp({ email });
-        if (error) alert("Erro ao enviar magic link");
-        else alert("Verifique seu e-mail para o link de acesso.");
-      }
-    });
-
-    logoutBtn.addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      alert("Você saiu.");
-      checkAuth();
-    });
-
     // Inicialização
-    checkAuth();
     carregarDica();
     carregarRanking();
-    // Faz login com e-mail e senha
-async function loginComEmailSenha() {
-  const email = document.getElementById("login-email").value;
-  const senha = document.getElementById("login-password").value;
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password: senha,
-  });
-
-  if (error) {
-    console.error("Erro ao logar:", error.message);
-    document.getElementById("login-status").innerText = "Erro ao fazer login.";
-  } else {
-    document.getElementById("login-status").innerText = "Login realizado com sucesso!";
-    console.log("Usuário logado:", data.user);
-  }
-}
-document.getElementById("login-button").addEventListener("click", loginComEmailSenha);
   </script>
 </body>
 </html>
