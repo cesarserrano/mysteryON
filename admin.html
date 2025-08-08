@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Dicas</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <h1>Administração de Dicas</h1>
+    <div id="status">Verificando acesso...</div>
+
+    <div id="form-container" style="display:none">
+      <h2>Nova Dica</h2>
+      <input id="nova-hora" type="number" placeholder="Hora (0-23)" min="0" max="23" />
+      <input id="nova-texto" type="text" placeholder="Texto da dica" />
+      <button onclick="criarDica()">Criar</button>
+
+      <h2>Dicas Existentes</h2>
+      <ul id="lista-dicas"></ul>
+    </div>
+  </main>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+
+    const statusDiv = document.getElementById('status');
+    const formDiv = document.getElementById('form-container');
+    const listaDicas = document.getElementById('lista-dicas');
+
+    const ADMIN_EMAIL = "xcesarx@gmail.com";
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      const user = session?.user;
+      if (!user || user.email !== ADMIN_EMAIL) {
+        statusDiv.innerText = "Acesso negado. Faça login com o email autorizado.";
+        return;
+      }
+
+      statusDiv.innerText = "Bem-vindo, administrador.";
+      formDiv.style.display = 'block';
+      carregarDicas();
+    });
+
+    async function criarDica() {
+      const hora = parseInt(document.getElementById("nova-hora").value);
+      const texto = document.getElementById("nova-texto").value;
+      if (!texto || isNaN(hora)) return alert("Preencha todos os campos corretamente.");
+
+      const { error } = await supabase.from("dicas").insert([{ hora, texto }]);
+      if (error) {
+        alert("Erro ao criar dica: " + error.message);
+      } else {
+        alert("Dica criada!");
+        document.getElementById("nova-hora").value = "";
+        document.getElementById("nova-texto").value = "";
+        carregarDicas();
+      }
+    }
+
+    async function carregarDicas() {
+      const { data, error } = await supabase.from("dicas").select("*").order("hora");
+      if (error) return alert("Erro ao carregar dicas: " + error.message);
+
+      listaDicas.innerHTML = "";
+      data.forEach((dica) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <strong>${dica.hora}h:</strong> ${dica.texto}
+          <button onclick="editarDica(${dica.id}, '${dica.texto.replace(/'/g, "\'")}', ${dica.hora})">✏️</button>
+          <button onclick="deletarDica(${dica.id})">🗑️</button>
+        `;
+        listaDicas.appendChild(li);
+      });
+    }
+
+    window.editarDica = async function(id, textoAtual, horaAtual) {
+      const novoTexto = prompt("Editar texto:", textoAtual);
+      const novaHora = parseInt(prompt("Editar hora:", horaAtual));
+      if (!novoTexto || isNaN(novaHora)) return;
+
+      const { error } = await supabase.from("dicas").update({ texto: novoTexto, hora: novaHora }).eq("id", id);
+      if (error) return alert("Erro ao editar: " + error.message);
+      carregarDicas();
+    }
+
+    window.deletarDica = async function(id) {
+      if (!confirm("Deseja realmente apagar esta dica?")) return;
+      const { error } = await supabase.from("dicas").delete().eq("id", id);
+      if (error) return alert("Erro ao deletar: " + error.message);
+      carregarDicas();
+    }
+  </script>
+</body>
+</html>
